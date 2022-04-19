@@ -4,10 +4,13 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
+import 'package:just_audio/just_audio.dart';
 
 void main() {
   runApp(const MyApp());
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -45,6 +48,30 @@ class _MyHomePageState extends State<MyHomePage> {
   int _new_traffic_light_json_time = 0;
   Timer? refresh_timer;
 
+
+
+
+  Future<int> traffic_light_sound() async {
+    // print('something exciting is going to happen here...');
+    await player.setAsset('assets/audio/traffic_light.mp3');
+    player.play();
+    return 1;
+  }
+
+  Future<int> left_lane_sound() async {
+    // print('something exciting is going to happen here...');
+    await player.setAsset('assets/audio/left_lane_departure.mp3');
+    player.play();
+    return 1;
+  }
+
+  Future<int> right_lane_sound() async {
+    // print('something exciting is going to happen here...');
+    await player.setAsset('assets/audio/right_lane_departure.mp3');
+    player.play();
+    return 1;
+  }
+
   // Fetch content from the json file
   Future<void> readJson() async {
     String path = await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOADS);
@@ -56,19 +83,26 @@ class _MyHomePageState extends State<MyHomePage> {
     String lane_contents = await lane_file.readAsString();
     final lane_data = await json.decode(lane_contents);
     // print(_counter);
-    setState(() {
 
+    setState(() {
+      // // int i = await
+      // print('calling set state');
 
       // traffic light data
       if(_traffic_json_id != traffic_light_data["json_id"]){
         _traffic_json_id = traffic_light_data["json_id"];
         _new_traffic_light_json = true;
+        traffic_light_sound();
         _new_traffic_light_json_time = DateTime.now().millisecondsSinceEpoch;
       }
       else{
         // print(DateTime.now().millisecondsSinceEpoch - _new_json_time);
         if((DateTime.now().millisecondsSinceEpoch - _new_traffic_light_json_time)<1000){
           _new_traffic_light_json = true;
+            //   () async {
+            // await player.setAsset('assets/audio/traffic_light.mpeg');
+            // player.play();
+          // };
         }
         else{
           _new_traffic_light_json = false;
@@ -82,6 +116,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
         _new_lane_json = true;
         _new_lane_json_time = DateTime.now().millisecondsSinceEpoch;
+        if (_lane_beta>0){
+          left_lane_sound();
+        }
+        else{
+          right_lane_sound();
+        }
+
       }
       else{
         // print(DateTime.now().millisecondsSinceEpoch - _new_json_time);
@@ -100,17 +141,22 @@ class _MyHomePageState extends State<MyHomePage> {
     Permission.storage.request();
   }
 
+  late AudioPlayer player;
+
   @override
   void initState() {
     requestPermission();
     refresh_timer = Timer.periodic(const Duration(milliseconds: 500), (Timer t) => readJson());
     super.initState();
+    player = AudioPlayer();
   }
 
   @override
   void dispose() {
     refresh_timer?.cancel();
+    player.dispose();
     super.dispose();
+
   }
 
   @override
