@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'package:just_audio/just_audio.dart';
+import 'package:test_1/model/traffic_light_model.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,7 +24,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'ADAS system'),
     );
   }
 }
@@ -40,13 +41,22 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
 
   int _lane_json_id = 0;
-  bool _new_lane_json = false;
-  int _new_lane_json_time = 0;
+  int _last_lane_warning_time = DateTime.now().millisecondsSinceEpoch;
   double _lane_beta = 0;
+  String _lane_departure_warning_text = "inside lanes";
+  bool show_lane_departure_warning_img = false;
+
   int _traffic_json_id = 0;
-  bool _new_traffic_light_json = false;
-  int _new_traffic_light_json_time = 0;
+  int _last_traffic_light_warning_time = DateTime.now().millisecondsSinceEpoch;
+  var _old_traffic_light_id_list = <int>[];
+  var _new_traffic_light_id_list = <int>[];
+  String _traffic_light_warning_text = "no traffic lights nearby";
+  bool show_traffic_light_img = false;
+
   Timer? refresh_timer;
+  static const int refresh_time_period = 100; // milliseconds
+
+  bool first_time = true;
 
 
 
@@ -78,6 +88,7 @@ class _MyHomePageState extends State<MyHomePage> {
     File traffic_light_file = await File('$path/fyp/traffic_light_data.json');
     String traffic_light_contents = await traffic_light_file.readAsString();
     final traffic_light_data = await json.decode(traffic_light_contents);
+    Traffic_lights traffic_lights = Traffic_lights.fromJson(traffic_light_data);
 
     File lane_file = await File('$path/fyp/lane_departure_data.json');
     String lane_contents = await lane_file.readAsString();
@@ -87,52 +98,78 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       // // int i = await
       // print('calling set state');
-
       // traffic light data
-      if(_traffic_json_id != traffic_light_data["json_id"]){
-        _traffic_json_id = traffic_light_data["json_id"];
-        _new_traffic_light_json = true;
-        traffic_light_sound();
-        _new_traffic_light_json_time = DateTime.now().millisecondsSinceEpoch;
-      }
-      else{
-        // print(DateTime.now().millisecondsSinceEpoch - _new_json_time);
-        if((DateTime.now().millisecondsSinceEpoch - _new_traffic_light_json_time)<1000){
-          _new_traffic_light_json = true;
-            //   () async {
-            // await player.setAsset('assets/audio/traffic_light.mpeg');
-            // player.play();
-          // };
-        }
-        else{
-          _new_traffic_light_json = false;
+      if((_traffic_json_id != traffic_lights.json_id)){
+        _traffic_json_id = traffic_lights.json_id;
+
+        _new_traffic_light_id_list = List.from(traffic_lights.traffic_light_ids);
+
+        if (!first_time){
+          if ((DateTime.now().millisecondsSinceEpoch -_last_traffic_light_warning_time)>3000){
+            if (_new_traffic_light_id_list.any((item) => _old_traffic_light_id_list.contains(item))) { // no sound warning
+              _traffic_light_warning_text = "traffic lights detected ahead";   // show there are traffic lights without sound warnings
+              show_traffic_light_img = true;
+            }
+            else{
+              traffic_light_sound();
+              _traffic_light_warning_text = "traffic lights detected ahead";
+              show_traffic_light_img = true;
+
+            }
+
+            _last_traffic_light_warning_time = DateTime.now().millisecondsSinceEpoch;
+            Timer traffic_light_show_timer = Timer(const Duration(seconds: 2), () { // show image and text for T seconds
+              setState(() {
+                show_traffic_light_img = false;
+                _traffic_light_warning_text = "no traffic lights nearby";
+              });
+            });
+          }
+
+          _old_traffic_light_id_list = List.from(_new_traffic_light_id_list);
         }
       }
 
       // lane data
       if(_lane_json_id != lane_data["json_id"]){
         _lane_json_id = lane_data["json_id"];
-        _lane_beta = lane_data["beta"];
+        // _lane_beta = lane_data["beta"];
 
-        _new_lane_json = true;
-        _new_lane_json_time = DateTime.now().millisecondsSinceEpoch;
-        if (_lane_beta>0){
-          left_lane_sound();
-        }
-        else{
-          right_lane_sound();
+
+        if (!first_time){
+
+          if ((DateTime.now().millisecondsSinceEpoch - _last_lane_warning_time) > 5000){  // stay silent for T seconds after once noticed
+
+            _lane_beta = lane_data["beta"];
+
+            if (_lane_beta>0){
+              left_lane_sound();
+              _lane_departure_warning_text = "left lane departure";
+              show_lane_departure_warning_img = true;
+
+            }
+            else{
+              right_lane_sound();
+              _lane_departure_warning_text = "right lane departure";
+              show_lane_departure_warning_img = true;
+            }
+
+            Timer lane_show_timer = Timer(const Duration(seconds: 2), () { // show image and text for T seconds
+              setState(() {
+                show_lane_departure_warning_img = false;
+                _lane_departure_warning_text = "inside lanes";
+              });
+            });
+
+          }
+          _last_lane_warning_time = DateTime.now().millisecondsSinceEpoch;
+
+
         }
 
       }
-      else{
-        // print(DateTime.now().millisecondsSinceEpoch - _new_json_time);
-        if((DateTime.now().millisecondsSinceEpoch - _new_lane_json_time)<1000){
-          _new_lane_json = true;
-        }
-        else{
-          _new_lane_json = false;
-        }
-      }
+
+      first_time = false;
     });
   }
 
@@ -146,7 +183,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     requestPermission();
-    refresh_timer = Timer.periodic(const Duration(milliseconds: 500), (Timer t) => readJson());
+    refresh_timer = Timer.periodic(const Duration(milliseconds: refresh_time_period), (Timer t) => readJson());
     super.initState();
     player = AudioPlayer();
   }
@@ -163,55 +200,40 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(widget.title),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+
           children: [
-            (_new_traffic_light_json==true)? const Text('new traffic light ****'):const Text("no traffic lights"),
-            (_new_lane_json==true)? ((_lane_beta > 0)? const Text('left lane departure'):const Text('right lane departure')):const Text("inside lane"),
+            Text(_traffic_light_warning_text),
+            if (show_traffic_light_img)...[
+              Image.asset(
+                'assets/images/traffic_light.png',
+                width: 200,
+              ),
+            ],
+            Text(_lane_departure_warning_text),
+            if(show_lane_departure_warning_img)...[
+              if (_lane_beta > 0)...[
+                Image.asset(
+                  'assets/images/left_lane_departure.png',
+                  width:200,
+                ),
+              ]
+              else...[
+               Image.asset(
+                 'assets/images/right_lane_departure.png',
+                 width: 200,
+               ),
+              ]
+            ]
           ],
         )
         // child: (_new_traffic_light_json==true)? const Text('new traffic light'):const Text("no traffic lights"),
       ),
-
-      // body: Padding(
-      //   padding: const EdgeInsets.all(25),
-      //   child: Column(
-      //     children: [
-      //       ElevatedButton(
-      //         child: const Text('Load Data'),
-      //         onPressed: readJson,
-      //       ),
-      //
-      //       // Display the data loaded from sample.json
-      //       _new_json == true
-      //           ? Expanded(
-      //         child: ListView.builder(
-      //           itemCount: _items.length,
-      //           itemBuilder: (context, index) {
-      //             return Card(
-      //               margin: const EdgeInsets.all(10),
-      //               child: ListTile(
-      //                 leading: Text(_items[index]["id"]),
-      //                 title: Text(_items[index]["name"]),
-      //                 subtitle: Text(_items[index]["description"]),
-      //               ),
-      //             );
-      //           },
-      //         ),
-      //       )
-      //           : Container()
-      //     ],
-      //   ),
-      // ),
-      //
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: _fetchData,
-      //   tooltip: 'Increment',
-      //   child: const Icon(Icons.add),
-      // ),
     );
   }
 }

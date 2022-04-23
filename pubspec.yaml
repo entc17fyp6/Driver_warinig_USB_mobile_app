@@ -62,8 +62,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/images/test_img_1.png
-    - assets/images/test_img_2.png
+    - assets/images/left_lane_departure.png
+    - assets/images/right_lane_departure.png
+    - assets/images/traffic_light.png
     - assets/audio/left_lane_departure.mp3
     - assets/audio/right_lane_departure.mp3
     - assets/audio/traffic_light.mp3
