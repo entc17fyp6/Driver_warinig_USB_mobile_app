@@ -195,6 +195,38 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
 
   }
+  // void _pushSaved() {
+  //   Navigator.of(context).push(
+  //     // Add lines from here...
+  //     MaterialPageRoute<void>(
+  //       builder: (context) {
+  //         final tiles = _saved.map(
+  //               (pair) {
+  //             return ListTile(
+  //               title: Text(
+  //                 pair.asPascalCase,
+  //                 style: _biggerFont,
+  //               ),
+  //             );
+  //           },
+  //         );
+  //         final divided = tiles.isNotEmpty
+  //             ? ListTile.divideTiles(
+  //           context: context,
+  //           tiles: tiles,
+  //         ).toList()
+  //             : <Widget>[];
+  //
+  //         return Scaffold(
+  //           appBar: AppBar(
+  //             title: const Text('Saved Suggestions'),
+  //           ),
+  //           body: ListView(children: divided),
+  //         );
+  //       },
+  //     ), // ...to here.
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -202,20 +234,36 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(widget.title),
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.list),
+        //     // onPressed: _pushSaved,
+        //     tooltip: 'Saved Suggestions',
+        //   ),
+        // ],
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
 
           children: [
-            Text(_traffic_light_warning_text),
+            Text(_traffic_light_warning_text,
+              style: const TextStyle(
+              fontSize: 25,
+              ),
+            ),
             if (show_traffic_light_img)...[
               Image.asset(
                 'assets/images/traffic_light.png',
                 width: 200,
               ),
             ],
-            Text(_lane_departure_warning_text),
+            Text(
+                _lane_departure_warning_text,
+              style: const TextStyle(
+                  fontSize: 25,
+              ),
+            ),
             if(show_lane_departure_warning_img)...[
               if (_lane_beta > 0)...[
                 Image.asset(
